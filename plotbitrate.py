@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 #
 # FFProbe Bitrate Graph
 #
@@ -32,6 +32,7 @@ import sys
 import shutil
 import argparse
 import subprocess
+import multiprocessing
 
 # prefer C-based ElementTree
 try:
@@ -98,6 +99,7 @@ with subprocess.Popen(
     ["ffprobe",
         "-show_entries", "frame",
         "-select_streams", stream_spec,
+        "-threads", str(multiprocessing.cpu_count()),
         "-print_format", "xml",
         args.input
     ],
@@ -174,6 +176,8 @@ with subprocess.Popen(
                 if frame_count > 1:
                     frame_time += float(node.get('pkt_duration_time'))
 
+        frame_time = frame_time / 60 # min
+
         frame_bitrate = (float(node.get('pkt_size')) * 8 / 1000) * frame_rate
         frame = (frame_time, frame_bitrate)
 
@@ -193,9 +197,9 @@ with subprocess.Popen(
 
 # setup new figure
 matplot.figure().canvas.set_window_title(args.input)
-matplot.title("Stream Bitrate vs Time")
-matplot.xlabel("Time (sec)")
-matplot.ylabel("Frame Bitrate (kbit/s)")
+matplot.title("Stream Bitrate vs Time", color='white')
+matplot.xlabel("Time (min)", color='white')
+matplot.ylabel("Frame Bitrate (kbit/s)", color='white')
 matplot.grid(True)
 
 # map frame type to color
@@ -249,10 +253,9 @@ peak_text_y = global_peak_bitrate + \
     ((matplot.ylim()[1] - matplot.ylim()[0]) * 0.015)
 peak_text = "peak ({:.0f})".format(global_peak_bitrate)
 
-# draw peak as think black line w/ text
-matplot.axhline(global_peak_bitrate, linewidth=2, color='black')
-matplot.text(peak_text_x, peak_text_y, peak_text,
-    horizontalalignment='center', fontweight='bold', color='black')
+# draw peak as think white line w/ text
+matplot.axhline(global_peak_bitrate, linewidth=2, color='white')
+matplot.text(peak_text_x, peak_text_y, peak_text, horizontalalignment='center', fontweight='bold', color='white')
 
 # calculate mean line position (right 85%, above line)
 mean_text_x = matplot.xlim()[1] * 0.85
@@ -260,16 +263,18 @@ mean_text_y = global_mean_bitrate + \
     ((matplot.ylim()[1] - matplot.ylim()[0]) * 0.015)
 mean_text = "mean ({:.0f})".format(global_mean_bitrate)
 
-# draw mean as think black line w/ text
-matplot.axhline(global_mean_bitrate, linewidth=2, color='black')
-matplot.text(mean_text_x, mean_text_y, mean_text,
-    horizontalalignment='center', fontweight='bold', color='black')
+# draw mean as think white line w/ text
+matplot.axhline(global_mean_bitrate, linewidth=2, color='white')
+matplot.text(mean_text_x, mean_text_y, mean_text, horizontalalignment='center', fontweight='bold', color='white')
 
 matplot.legend()
 
 # render graph to file (if requested) or screen
 if args.output:
-    matplot.savefig(args.output, format=args.format)
+    fig = matplot.gcf()
+    fig.set_size_inches(27, 15)
+
+    fig.savefig(args.output, format=args.format, dpi=150, transparent=True, bbox_inches="tight", edgecolor='black')
 else:
     matplot.show()
 
